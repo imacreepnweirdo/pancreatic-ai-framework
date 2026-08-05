@@ -1,0 +1,7 @@
+numpy
+pandas
+SimpleITK
+matplotlib
+tqdm
+nibabel
+openpyxl

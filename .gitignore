@@ -1,0 +1,52 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE/editor metadata
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archive files
+*.zip
+*.7z
+*.rar
+*.tar.gz
+*.tgz
+*.tar.bz2
+*.tar.xz
+
+# Data directories that should not be committed
+data/raw_ct/
+data/labels/
+data/cropped/
+data/processed/images/
+data/processed/masks/
+models/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.cache
+*.bak
+*~
