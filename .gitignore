@@ -42,6 +42,8 @@ data/labels/
 data/cropped/
 data/processed/images/
 data/processed/masks/
+data/processed/anomaly_investigation/
+data/processed/batch2_preprocessing_failures.csv
 models/
 
 # Logs and temporary files
@@ -50,3 +52,7 @@ models/
 *.cache
 *.bak
 *~
+
+# Generated notebook exports and temporary images
+reports/*.html
+output.png
