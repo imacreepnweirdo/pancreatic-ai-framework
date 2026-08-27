@@ -1,308 +1,412 @@
-# PANORAMA Pancreatic Cancer Segmentation Pipeline
+# Pancreatic Cancer AI Framework
 
-A reproducible preprocessing and dataset preparation pipeline for pancreatic CT image segmentation using the **PANORAMA** dataset.
+A research framework for **AI-assisted pancreatic cancer analysis from abdominal CT scans**, developed as part of an undergraduate thesis project.
 
-This repository contains the complete data preparation workflow developed as part of an undergraduate Computer Science thesis. It includes dataset organization, quality verification, preprocessing, visualization, anomaly investigation, metadata management, and preparation of a standardized dataset for deep learning segmentation research.
+The project focuses on building a reproducible data-processing and machine-learning pipeline for pancreatic ductal adenocarcinoma (PDAC) analysis using the **PANORAMA public training and development dataset**.
 
-## Overview
+---
 
-Medical image segmentation is an important task in computer-aided diagnosis. Before a deep learning model can be trained, CT scans and segmentation masks must be standardized into a consistent representation.
+## Project Status
 
-The objective of this project is to transform heterogeneous abdominal CT scans from the PANORAMA dataset into a clean, standardized dataset suitable for deep learning research while making each preprocessing step transparent, reproducible, and easy to validate.
+The dataset preparation and preprocessing stage is currently complete.
 
-The pipeline includes:
+| Item | Current status |
+|---|---:|
+| PANORAMA cases processed | **2,238** |
+| PDAC cases | **676** |
+| Non-PDAC cases | **1,562** |
+| Processing dimensionality | **3D** |
+| Processed image shape | **128 × 160 × 192** |
+| Processed mask shape | **128 × 160 × 192** |
+| Image dtype | `float32` |
+| Image range | `[0, 1]` |
+| Mask dtype | `uint8` |
+| Mask labels | `0–6` |
+| Missing processed images | **0** |
+| Missing processed masks | **0** |
+| Invalid image shapes | **0** |
+| Invalid mask shapes | **0** |
+| Invalid image dtypes | **0** |
+| Invalid mask dtypes | **0** |
+| Invalid image ranges | **0** |
+| Invalid mask labels | **0** |
+| Duplicate study IDs | **0** |
 
-- Dataset organization and inventory
-- CT and segmentation loading
-- Readability and geometry validation
-- Hounsfield Unit clipping and intensity normalization
-- Pancreas ROI extraction and padding
-- Metadata generation and quality control
-- Visualization and anomaly investigation
-- Dataset eligibility and full-dataset verification
+The project is now moving from **dataset engineering to experimental model development**.
 
-## Thesis Objective
+---
 
-The long-term goal of this thesis is to investigate automatic pancreatic cancer segmentation using deep learning. This repository focuses on the data preparation stage and the construction of a high-quality standardized dataset before model development.
+## Research Direction
 
-Future work will extend the repository with dataset splitting, model training, evaluation, performance comparison, thesis experiments, and model inference.
+The long-term objective is to investigate whether a 3D deep-learning system can provide useful and trustworthy assistance for pancreatic cancer analysis from CT imaging.
 
-## Dataset
+The current research direction includes:
 
-This project uses the **PANORAMA** pancreatic CT dataset, which contains abdominal CT volumes, pancreas and tumor segmentation masks, clinical metadata, and multiple annotation sources.
+1. Reproducible 3D CT preprocessing
+2. Patient/study-level dataset partitioning
+3. 3D deep-learning model development
+4. PDAC classification and/or segmentation experiments
+5. Evaluation using clinically relevant metrics
+6. Comparison of different modelling strategies
+7. Investigation of model interpretability and reliability
+8. Analysis of failure cases and limitations
 
-The local dataset is organized as:
+The exact experimental architecture and final research questions are still being developed and will be documented as experiments are completed.
+
+---
+
+# Dataset
+
+## PANORAMA
+
+The primary dataset used in this project is the **PANORAMA public training and development dataset**.
+
+PANORAMA combines data from multiple sources, including patients without PDAC from the NIH Clinical Center dataset and patients from the Medical Segmentation Decathlon pancreas dataset. The official PANORAMA annotation repository documents the reference standards, annotation process, and label definitions.
+
+Official resources:
+
+- [PANORAMA Challenge](https://panorama.grand-challenge.org/)
+- [PANORAMA Labels Repository](https://github.com/DIAGNijmegen/panorama_labels)
+- [PANORAMA Study Protocol](https://doi.org/10.5281/zenodo.10599559)
+
+### Dataset composition used in this project
+
+The current processed dataset contains:
+
+- **676 PDAC cases**
+- **1,562 non-PDAC cases**
+- **2,238 cases total**
+
+The dataset includes both manually and automatically generated lesion annotations. According to the official PANORAMA documentation, 482 of the 676 PDAC cases have manual lesion annotations, while the remaining PDAC cases have automatically generated lesion segmentations.
+
+The pancreas, pancreatic duct, veins, arteries, and common bile duct annotations are automatically generated according to the PANORAMA documentation.
+
+---
+
+# Official PANORAMA Label Mapping
+
+The segmentation masks use the official PANORAMA label definitions:
+
+| Label | Structure |
+|---:|---|
+| `0` | Background |
+| `1` | PDAC lesion |
+| `2` | Veins |
+| `3` | Arteries |
+| `4` | Pancreas parenchyma |
+| `5` | Pancreatic duct |
+| `6` | Common bile duct |
+
+These definitions are taken directly from the official PANORAMA annotation repository.
+
+---
+
+# Data Processing Pipeline
+
+The project uses a reproducible preprocessing pipeline implemented in `src/preprocessing.py`.
+
+The general pipeline is:
 
 ```text
-data/
-├── raw_ct/                         # Local raw CT volumes; not committed
-├── labels/                         # Local segmentation labels; not committed
-│   ├── Manual_Labels/
-│   └── Automatic_Labels/
-└── processed/
-    ├── images/                     # Local processed arrays; not committed
-    ├── masks/                      # Local processed masks; not committed
-    ├── metadata.csv
-    ├── batch2_eligibility.csv
-    ├── batch3_inventory.csv
-    └── batch3_eligibility.csv
+Raw CT
+   │
+   ▼
+CT / Label Loading
+   │
+   ▼
+Geometry Validation
+   │
+   ▼
+Resampling
+   │
+   ▼
+HU Windowing
+   │
+   ▼
+Normalization
+   │
+   ▼
+ROI Cropping
+   │
+   ▼
+Padding
+   │
+   ▼
+3D Processed Volume
+   │
+   ├── Image
+   └── Segmentation Mask
 ```
 
-The PANORAMA dataset and generated medical-image files are not distributed with this repository because of dataset licensing and storage constraints. Raw CT volumes, segmentation masks, and processed NumPy datasets are intentionally excluded from Git.
+### Current preprocessing configuration
 
-## Preprocessing Pipeline
-
-Each CT volume passes through the following stages:
-
-1. Load the CT scan and segmentation mask
-2. Verify image and segmentation integrity
-3. Verify CT and segmentation spatial geometry
-4. Resample to a uniform voxel spacing
-5. Clip Hounsfield Units to the configured soft-tissue window
-6. Apply min-max intensity normalization
-7. Compute the pancreas region of interest
-8. Crop around the region of interest
-9. Pad to a fixed output size
-10. Convert CT and mask arrays to standardized data types
-11. Save processed arrays as NumPy files
-12. Generate and update processed dataset metadata
-13. Run dataset-wide quality verification
-
-The production preprocessing pipeline is implemented in `src/preprocessing.py`.
-
-The standardized processed representation is:
-
-```text
-Image: shape (128, 160, 192), dtype float32, range [0, 1]
-Mask:  shape (128, 160, 192), dtype uint8
+```
+Target spacing : (1.0, 1.0, 3.0) mm
+ROI size       : (128, 160, 192)
+HU window      : (-150, 250)
 ```
 
-## Dataset Quality Control
+The resulting CT volumes are stored as:
 
-The validation workflow checks CT and segmentation readability, shape compatibility, voxel spacing, origin, direction, label availability, duplicate study IDs, processed file existence, output shape and dtype, intensity range, and segmentation label validity.
-
-Small floating-point differences in voxel-spacing metadata are handled with a defined numerical tolerance. Cases with substantial spatial inconsistencies are investigated separately rather than silently processed.
-
-## Anomaly Investigation: `100936_00001`
-
-During Batch 2 inspection, case `100936_00001` was identified with a substantial Z-spacing discrepancy between the original CT and manual segmentation. The original CT reported approximately `0.754321 mm` Z spacing, while the manual label reported `0.5 mm`.
-
-The case was investigated using geometry comparison, physical-coordinate analysis, voxel-index comparison, visualization, and resampling experiments. The investigation indicated that the segmentation voxel data was anatomically aligned with the original CT voxel indices, while the label Z-spacing metadata was inconsistent.
-
-A separate repaired label was created by preserving the original segmentation voxel values and shape, changing only the spatial metadata to match the CT geometry, and converting the representation to `uint8`. The original PANORAMA label was not modified. The repaired case was processed through the standard pipeline and integrated into the processed dataset.
-
-This investigation is documented in `notebooks/100936_00001_inspection.ipynb`. Local investigation artifacts are excluded from Git.
-
-## Workflow Diagram
-
-```text
-PANORAMA dataset
-        |
-        v
-Dataset inventory
-        |
-        v
-Readability and geometry validation
-        |
-        v
-Eligibility validation
-        |
-        v
-Preprocessing and ROI extraction
-        |
-        v
-Processed NumPy arrays
-        |
-        v
-Metadata generation
-        |
-        v
-Dataset-wide verification
+```
+float32
+range: [0, 1]
+shape: (128, 160, 192)
 ```
 
-## Current Dataset Status
+Segmentation masks are stored as:
 
-The current processed dataset contains **1,703 verified cases**:
+```
+uint8
+shape: (128, 160, 192)
+labels: 0–6
+```
 
-| Source | Cases |
-| --- | ---: |
-| Batch 1 | 1,123 |
-| Batch 2 | 565 |
-| Batch 2 repaired anomaly (`100936_00001`) | 1 |
-| Batch 3 | 580 |
-| **Total** | **1,703** |
+---
 
-The final verification reported zero missing images, missing masks, invalid shapes, invalid dtypes, invalid image ranges, invalid mask labels, and duplicate study IDs.
+# Dataset Quality Control
 
-## Batch Workflows
+Before preprocessing, each dataset batch underwent inspection and eligibility checks.
 
-### Batch 2
+The checks included:
 
-Batch 2 was inventoried and validated before preprocessing. The workflow checked CT and label availability, readability, spatial compatibility, and cases requiring review. The `100936_00001` anomaly was investigated and repaired separately.
+- CT readability
+- Label readability
+- CT/label shape compatibility
+- CT/label spacing compatibility
+- Origin compatibility
+- Direction compatibility
+- Label-type selection
+- Previously processed-case detection
+- Held-out-case detection
 
-Relevant notebooks:
+After preprocessing, the complete dataset was verified for:
 
-- `notebooks/08_batch2_inventory.ipynb`
-- `notebooks/09_batch2_preprocessing.ipynb`
-- `notebooks/100936_00001_inspection.ipynb`
+- Missing image files
+- Missing mask files
+- Image shape consistency
+- Mask shape consistency
+- Image dtype consistency
+- Mask dtype consistency
+- Image value range
+- Valid segmentation labels
+- Duplicate study IDs
 
-### Batch 3
+The final verification currently reports:
 
-The Batch 3 inventory contained 580 CT cases, 447 automatic labels, and 133 manual labels. All 580 cases were readable, geometrically compatible, and eligible for preprocessing. Batch 3 preprocessing increased the processed dataset from 1,123 to 1,703 cases.
+```
+Processed cases       : 2238
+Missing images        : 0
+Missing masks         : 0
+Invalid image shape   : 0
+Invalid mask shape    : 0
+Invalid image dtype   : 0
+Invalid mask dtype    : 0
+Invalid image range   : 0
+Invalid mask labels   : 0
+Duplicate study IDs   : 0
+```
 
-Relevant notebooks:
+---
 
-- `notebooks/10_batch3_inventory.ipynb`
-- `notebooks/11_batch3_eligibility.ipynb`
-- `notebooks/12_batch3_preprocessing.ipynb`
+# Batch Processing
 
-## Repository Structure
+The dataset was processed incrementally to allow inspection and quality control before committing to the complete dataset.
 
-```text
+Current batches:
+
+```
+Batch 1
+Batch 2
+Batch 3
+Batch 4
+```
+
+Each batch was independently inspected for readability, label availability, and CT/label geometry before preprocessing.
+
+---
+
+# Batch 2 Anomaly Investigation
+
+During Batch 2 processing, case:
+
+```
+100936_00001
+```
+
+was identified as having a mismatch between the original CT geometry and the corresponding manual label geometry.
+
+The original PANORAMA data was **not modified**.
+
+Instead, a separate repaired copy was created for preprocessing. The repaired label was explicitly injected into the preprocessing pipeline while preserving the original PANORAMA annotation.
+
+The resulting processed case passed the complete dataset validation.
+
+The original annotation remains preserved separately from the repaired preprocessing artifact.
+
+---
+
+# Repository Structure
+
+```
 Pancreatic_Cancer_Thesis/
+│
 ├── data/
-│   ├── raw_ct/                    # Local dataset, not committed
-│   ├── labels/                    # Local labels, not committed
+│   ├── raw_ct/
+│   │   └── Raw CT data
+│   │
+│   ├── labels/
+│   │   ├── Automatic_Labels/
+│   │   └── Manual_Labels/
+│   │
 │   └── processed/
-│       ├── images/                # Local processed dataset, not committed
-│       ├── masks/                 # Local processed masks, not committed
+│       ├── images/
+│       ├── masks/
 │       ├── metadata.csv
-│       ├── batch2_eligibility.csv
-│       ├── batch3_inventory.csv
-│       └── batch3_eligibility.csv
-├── figures/                       # Figures and visual outputs
-├── models/                        # Local model artifacts, not committed
-├── notebooks/                     # Research workflow notebooks
-├── outputs/                       # Summary outputs
-├── reports/                       # Generated reports, not committed
-├── src/                           # Core Python package
-├── .gitignore
-├── LICENSE
+│       ├── batch*_inventory.csv
+│       └── batch*_eligibility.csv
+│
+├── figures/
+├── models/
+├── notebooks/
+│   ├── 07_dataset_creation.ipynb
+│   ├── 08_batch2_inventory.ipynb
+│   ├── 09_batch2_preprocessing.ipynb
+│   ├── 10_batch3_inventory.ipynb
+│   ├── 11_batch3_eligibility.ipynb
+│   ├── 12_batch3_preprocessing.ipynb
+│   ├── 13_batch4_inventory.ipynb
+│   ├── 14_batch4_eligibility.ipynb
+│   ├── 15_batch4_preprocessing.ipynb
+│   └── 16_final_dataset_audit.ipynb
+│
+├── src/
+│   ├── config.py
+│   ├── io.py
+│   └── preprocessing.py
+│
+├── reports/
+
 ├── README.md
-└── requirements.txt
+└── .gitignore
 ```
 
-## Source Modules
+Large medical-imaging files and generated processed volumes are intentionally **not stored in the Git repository**.
 
-| Module | Description |
-| --- | --- |
-| `config.py` | Project configuration and paths |
-| `io.py` | Dataset loading utilities |
-| `preprocessing.py` | Image preprocessing pipeline |
-| `validation.py` | Dataset verification and quality checks |
-| `visualization.py` | CT and segmentation visualization |
-| `utils.py` | Helper utilities |
+---
 
-## Jupyter Notebooks
+# Reproducibility
 
-| Notebook | Purpose |
-| --- | --- |
-| `01_dataset_inventory.ipynb` | Dataset inventory |
-| `02_batch1_metadata.ipynb` | Metadata analysis |
-| `03_ct_segmentation_visualization.ipynb` | CT and segmentation visualization |
-| `04_dataset_validation.ipynb` | Dataset validation |
-| `05_roi_size_analysis.ipynb` | ROI size analysis |
-| `06_preprocessing_pipeline.ipynb` | Preprocessing demonstration |
-| `07_dataset_creation.ipynb` | Processed dataset creation |
-| `08_batch2_inventory.ipynb` | Batch 2 inventory and inspection |
-| `09_batch2_preprocessing.ipynb` | Batch 2 preprocessing |
-| `100936_00001_inspection.ipynb` | Batch 2 spatial anomaly investigation |
-| `10_batch3_inventory.ipynb` | Batch 3 inventory and inspection |
-| `11_batch3_eligibility.ipynb` | Batch 3 preprocessing eligibility |
-| `12_batch3_preprocessing.ipynb` | Batch 3 preprocessing |
+The project is organized so that dataset preparation and preprocessing can be reproduced from the source notebooks and preprocessing implementation.
 
-## Installation
+Important preprocessing parameters are centralized in the project configuration and should not be changed casually after the dataset split has been established.
 
-```bash
-git clone https://github.com/imacreepnweirdo/pancreatic-ai-framework.git
-cd pancreatic-ai-framework
-python -m venv .venv
+Future experiments should use a fixed dataset partition so that different models can be compared fairly.
+
+---
+
+# Next Research Stage
+
+The dataset preparation stage is complete.
+
+The next stage is:
+
+```
+Final Dataset Audit
+        │
+        ▼
+Patient / Study-Level Split
+        │
+        ▼
+Train / Validation / Test Sets
+        │
+        ▼
+3D Baseline Model
+        │
+        ▼
+Training & Evaluation
+        │
+        ▼
+Model Comparison
+        │
+        ▼
+Interpretability / Explainability
+        │
+        ▼
+Failure Analysis
+        │
+        ▼
+Final Experimental Results
 ```
 
-Activate the environment:
+A critical requirement is that dataset splitting must occur at the **patient/study level**, rather than randomly splitting individual slices or derived samples. This is intended to prevent information leakage between training, validation, and test sets.
 
-```bash
-# Windows
-.venv\Scripts\activate
+The test set will be fixed before model experimentation begins.
 
-# Linux or macOS
-source .venv/bin/activate
+---
+
+# Research Philosophy
+
+This project is not intended to focus solely on achieving a high classification or segmentation score.
+
+The research will also investigate:
+
+- Generalization
+- Data leakage
+- Class imbalance
+- Annotation quality
+- Model failure cases
+- Interpretability
+- Robustness
+- Clinical plausibility
+- Reproducibility
+
+Experimental claims will only be added to this README after they have been empirically evaluated.
+
+---
+
+# Data Privacy and Repository Policy
+
+The repository contains the code, notebooks, metadata, and documentation required to reproduce the research workflow.
+
+Large medical-imaging files are intentionally excluded from Git.
+
+The following types of files are not committed:
+
+```
+*.nii
+*.nii.gz
+*.npy
+raw CT volumes
+processed image volumes
+processed segmentation volumes
+local anomaly-investigation artifacts
+generated HTML reports
+large archives
 ```
 
-Install dependencies:
+The original dataset should be obtained from its official source and handled according to the applicable dataset terms and research requirements.
 
-```bash
-pip install -r requirements.txt
-```
+---
 
-## Requirements
+# Citation
 
-The project uses Python 3.11 or newer and the packages listed in `requirements.txt`, including NumPy, Pandas, SimpleITK, NiBabel, Matplotlib, tqdm, and OpenPyXL.
+If using the PANORAMA dataset or its annotations, please cite the official PANORAMA publication:
 
-## Reproducing Dataset Preparation
+> Alves, N., Schuurmans, M., Rutkowski, D., Yakar, D., Haldorsen, I., Liedenbaum, M., Molven, A., Vendittelli, P., Litjens, G., Hermans, J., & Huisman, H. (2024). *The PANORAMA Study Protocol: Pancreatic Cancer Diagnosis - Radiologists Meet AI.*
 
-1. Obtain the PANORAMA dataset through its official distribution channel.
-2. Place raw CT volumes and labels in the local `data/` directories.
-3. Run the relevant inventory notebook.
-4. Review readability and spatial-geometry validation.
-5. Run the corresponding eligibility notebook.
-6. Process eligible cases with the preprocessing notebook.
-7. Verify the generated arrays and metadata.
-8. Run full processed-dataset verification.
+DOI:
 
-The notebooks provide the research record for the preparation workflow. Generated medical-image files remain local and are not committed.
+`https://doi.org/10.5281/zenodo.10599559`
 
-## Current Progress
+Please also consult the official PANORAMA resources for dataset-specific citation requirements.
 
-- [x] Dataset organization
-- [x] Metadata verification
-- [x] CT and segmentation visualization
-- [x] CT/segmentation geometry validation
-- [x] Eligibility validation
-- [x] ROI extraction
-- [x] Intensity normalization
-- [x] Metadata generation
-- [x] Batch 1 preprocessing
-- [x] Batch 2 preprocessing and anomaly investigation
-- [x] Batch 3 inventory, eligibility validation, and preprocessing
-- [x] Final 1,703-case dataset verification
-- [ ] Final dataset splitting
-- [ ] Model training
-- [ ] Model evaluation
-- [ ] Thesis experiments
+---
 
-## Roadmap and Future Work
+# Disclaimer
 
-- Add reproducible train/validation/test splitting
-- Implement and evaluate a 3D U-Net baseline
-- Benchmark nnU-Net and transformer-based segmentation models
-- Add cross-validation experiments
-- Compare Dice score, IoU, precision, recall, and Hausdorff distance
-- Add an automatic inference pipeline
-- Add automated unit tests and a command-line workflow
+This repository represents an ongoing academic research project.
 
-## Results
+The models and methods developed here are experimental and are **not intended for clinical diagnosis or treatment decisions**.
 
-Quantitative model results will be added after the training and evaluation experiments are completed.
-
-## Acknowledgements
-
-This work is part of an undergraduate thesis and builds on the PANORAMA dataset and open medical imaging research practices.
-
-## Citation
-
-If this repository contributes to your research, please cite the PANORAMA dataset, this repository, and the accompanying undergraduate thesis when it is published. The formal citation details will be added here.
-
-## License
-
-This project is licensed under the MIT License. See `LICENSE` for details.
-
-## Author
-
-**Shahriar Ahmed**
-
-Undergraduate Student
-
-Department of Computer Science and Engineering
-
-Rajshahi, Bangladesh
+Experimental performance should not be interpreted as evidence of clinical effectiveness without appropriate external validation and clinical evaluation.
