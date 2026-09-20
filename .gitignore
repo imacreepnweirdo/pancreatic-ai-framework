@@ -56,3 +56,17 @@ models/
 # Generated notebook exports and temporary images
 reports/*.html
 output.png
+
+# Model checkpoints and large Grad-CAM arrays
+checkpoints/
+*.npy
+gradcam_investigation/cams_layer4/
+gradcam_investigation/cam_volumes/
+
+# Large dataset archives and Kaggle artifacts
+kaggle_upload/
+kaggle_checkpoint/
+
+# Model checkpoints
+reports/checkpoints_run2/
+*.pt

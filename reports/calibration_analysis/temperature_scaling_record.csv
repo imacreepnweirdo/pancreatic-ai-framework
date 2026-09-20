@@ -1,0 +1,2 @@
+fitted_temperature,fit_set,fit_n_cases,eval_set,eval_n_cases,n_bins_ece,n_bootstrap,seed,validation_reused_for_checkpoint_selection_and_calibration
+2.6769568612463224,validation,338,test,337,10,2000,42,True

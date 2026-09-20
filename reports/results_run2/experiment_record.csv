@@ -1,0 +1,2 @@
+seed,architecture,pretraining,input_shape,batch_size,learning_rate,weight_decay,max_epochs,early_stopping_patience,train_cases,validation_cases,test_cases,best_epoch,best_validation_loss
+42,3D ResNet-18,Kinetics-400,"(1, 128, 160, 192)",4,5e-05,1e-05,40,7,1563,338,337,4,0.9166195351084881
